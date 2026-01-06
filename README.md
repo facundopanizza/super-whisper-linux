@@ -12,16 +12,42 @@ Works with Hyprland and other wlroots-based Wayland compositors.
 - 🌍 Multilingual support (Spanish, English, and more)
 - 🖥️ System tray integration
 
-## Requirements
+## Installation
 
-- Linux with Wayland (tested on Hyprland)
-- `wl-copy` (wl-clipboard) for clipboard
-- `wtype` for paste simulation
-- `socat` for IPC communication
+### NixOS / Home-Manager (Recommended)
 
-## Quick Start
+Add to your `flake.nix` inputs:
 
-### 1. Build from source
+```nix
+{
+  inputs = {
+    super-whisper-linux = {
+      url = "github:facundopanizza/super-whisper-linux";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+  };
+}
+```
+
+Then in your home-manager config (`home.nix`):
+
+```nix
+{ inputs, pkgs, ... }:
+
+{
+  home.packages = [
+    inputs.super-whisper-linux.packages.${pkgs.system}.default
+  ];
+}
+```
+
+### Nix (without flakes)
+
+```bash
+nix-env -if https://github.com/facundopanizza/super-whisper-linux/archive/main.tar.gz
+```
+
+### Build from source
 
 ```bash
 # Enter development environment
@@ -34,63 +60,60 @@ cargo build --release
 cp target/release/super-whisper-linux ~/.local/bin/
 ```
 
-### 2. Download a Whisper model
+## Quick Start
+
+### 1. Download a Whisper model
 
 ```bash
-# Create models directory
-mkdir -p ~/.local/share/super-whisper-linux/models
+# Using the built-in download command (recommended)
+super-whisper-linux download-model --model base
 
-# Download base multilingual model (recommended for Spanish/English)
+# Or manually with curl
+mkdir -p ~/.local/share/super-whisper-linux/models
 curl -L https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.bin \
   -o ~/.local/share/super-whisper-linux/models/ggml-base.bin
 ```
 
 Available models (larger = more accurate but slower):
-- `ggml-tiny.bin` (75 MB) - Fastest, least accurate
-- `ggml-base.bin` (142 MB) - Good balance ✓
-- `ggml-small.bin` (466 MB) - Better accuracy
-- `ggml-medium.bin` (1.5 GB) - High accuracy
-- `ggml-large-v3.bin` (3 GB) - Best accuracy
+| Model | Size | Speed | Accuracy |
+|-------|------|-------|----------|
+| tiny | 75 MB | Fastest | Basic |
+| base | 142 MB | Fast | Good ✓ |
+| small | 466 MB | Medium | Better |
+| medium | 1.5 GB | Slow | High |
+| large | 3 GB | Slowest | Best |
 
-### 3. Create configuration
+### 2. Create configuration
 
 ```bash
-# Generate default config
 super-whisper-linux init-config
-
-# Or copy the example
-cp config.example.toml ~/.config/super-whisper-linux/config.toml
 ```
 
-### 4. Set up Hyprland keybind
+### 3. Set up Hyprland keybind
 
 Add to `~/.config/hypr/hyprland.conf`:
 
 ```conf
 # SuperWhisper - Push to talk
-bind = SUPER, V, exec, ~/.local/bin/super-whisper-linux trigger toggle
-
-# Alternative: Use the trigger script
-# bind = SUPER, V, exec, ~/Work/super-whisper-linux/scripts/trigger.sh
+bind = SUPER, B, exec, super-whisper-linux trigger toggle
 ```
 
-### 5. Start the app
+### 4. Start the app
 
 ```bash
 # Run manually
 super-whisper-linux
 
-# Or enable as a systemd user service
-cp systemd/super-whisper.service ~/.config/systemd/user/
-systemctl --user daemon-reload
-systemctl --user enable --now super-whisper.service
+# Or add to Hyprland autostart
+# In hyprland.conf:
+exec-once = super-whisper-linux
 ```
 
 ## Usage
 
-1. Press `SUPER+V` to start recording (tray icon turns red)
+1. Press `SUPER+B` to start recording
 2. Speak your text
-3. Press `SUPER+V` again to stop and transcribe
+3. Press `SUPER+B` again to stop and transcribe
 4. Text is automatically pasted to the focused application
 
 ### Commands
@@ -104,6 +127,9 @@ super-whisper-linux trigger toggle  # Toggle recording
 super-whisper-linux trigger start   # Start recording
 super-whisper-linux trigger stop    # Stop and transcribe
 super-whisper-linux trigger cancel  # Cancel recording
+
+# Model management
+super-whisper-linux download-model --model base  # Download a model
 
 # Utilities
 super-whisper-linux devices         # List audio devices
@@ -137,10 +163,10 @@ model = "base"                      # tiny, base, small, medium, large
 
 ### App not responding to hotkey
 - Check if the socket exists: `ls $XDG_RUNTIME_DIR/super-whisper.sock`
-- Check logs: `journalctl --user -u super-whisper -f`
+- Check if app is running: `super-whisper-linux status`
 
 ### Paste not working
-- Ensure `wtype` is installed: `which wtype`
+- Ensure `wtype` is installed and in PATH
 - Try pasting manually after transcription (text is copied to clipboard)
 
 ### No audio recorded
@@ -154,7 +180,7 @@ model = "base"                      # tiny, base, small, medium, large
 nix develop
 
 # Run with debug logging
-RUST_LOG=debug cargo run
+cargo run -- --debug
 
 # Watch for changes
 cargo watch -x run

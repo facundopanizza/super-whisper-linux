@@ -41,6 +41,13 @@ enum Commands {
 
     /// Generate example configuration file
     InitConfig,
+
+    /// Download a whisper model
+    DownloadModel {
+        /// Model variant: tiny, base, small, medium, large
+        #[arg(short, long, default_value = "base")]
+        model: String,
+    },
 }
 
 #[derive(Subcommand)]
@@ -80,6 +87,7 @@ async fn main() -> anyhow::Result<()> {
         Commands::Devices => list_devices()?,
         Commands::Status => show_status(config).await?,
         Commands::InitConfig => init_config()?,
+        Commands::DownloadModel { model } => download_model(&model).await?,
     }
 
     Ok(())
@@ -192,10 +200,80 @@ fn init_config() -> anyhow::Result<()> {
 
     println!("Configuration file created at {:?}", config_path);
     println!("\nNext steps:");
-    println!("1. Download a whisper model (multilingual for Spanish/English):");
-    println!("   curl -L https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.bin -o ~/.local/share/super-whisper-linux/models/ggml-base.bin");
+    println!("1. Download a whisper model:");
+    println!("   super-whisper-linux download-model --model base");
     println!("\n2. Add a hotkey to your Hyprland config:");
-    println!("   bind = SUPER, V, exec, super-whisper trigger toggle");
+    println!("   bind = SUPER, B, exec, super-whisper-linux trigger toggle");
+
+    Ok(())
+}
+
+async fn download_model(model: &str) -> anyhow::Result<()> {
+    use futures::StreamExt;
+    use std::io::Write;
+
+    // Validate model name
+    let valid_models = ["tiny", "base", "small", "medium", "large"];
+    if !valid_models.contains(&model) {
+        eprintln!("Invalid model: {}. Valid options: {}", model, valid_models.join(", "));
+        std::process::exit(1);
+    }
+
+    let filename = format!("ggml-{}.bin", model);
+    let url = format!(
+        "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/{}",
+        filename
+    );
+
+    // Create models directory
+    config::init_dirs()?;
+    let models_dir = config::data_dir().join("models");
+    std::fs::create_dir_all(&models_dir)?;
+
+    let dest_path = models_dir.join(&filename);
+
+    if dest_path.exists() {
+        println!("Model already exists at {:?}", dest_path);
+        println!("Delete it first if you want to re-download.");
+        return Ok(());
+    }
+
+    println!("Downloading {} model from HuggingFace...", model);
+    println!("URL: {}", url);
+    println!("Destination: {:?}", dest_path);
+    println!();
+
+    let client = reqwest::Client::new();
+    let response = client
+        .get(&url)
+        .send()
+        .await?
+        .error_for_status()?;
+
+    let total_size = response.content_length().unwrap_or(0);
+    let mut downloaded: u64 = 0;
+
+    let mut file = std::fs::File::create(&dest_path)?;
+    let mut stream = response.bytes_stream();
+
+    while let Some(chunk) = stream.next().await {
+        let chunk = chunk?;
+        file.write_all(&chunk)?;
+        downloaded += chunk.len() as u64;
+
+        if total_size > 0 {
+            let percent = (downloaded as f64 / total_size as f64) * 100.0;
+            print!("\rDownloading: {:.1}% ({:.1} MB / {:.1} MB)",
+                percent,
+                downloaded as f64 / 1_000_000.0,
+                total_size as f64 / 1_000_000.0
+            );
+            std::io::stdout().flush()?;
+        }
+    }
+
+    println!("\n\nDownload complete!");
+    println!("Model saved to: {:?}", dest_path);
 
     Ok(())
 }

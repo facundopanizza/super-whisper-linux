@@ -95,11 +95,27 @@
             lockFile = ./Cargo.lock;
           };
 
-          inherit buildInputs nativeBuildInputs;
+          inherit buildInputs;
+
+          nativeBuildInputs = nativeBuildInputs ++ [ pkgs.makeWrapper ];
 
           OPENSSL_DIR = "${pkgs.openssl.dev}";
           OPENSSL_LIB_DIR = "${pkgs.openssl.out}/lib";
           LIBCLANG_PATH = "${pkgs.llvmPackages.libclang.lib}/lib";
+
+          # Wrap the binary to include runtime dependencies in PATH
+          postInstall = ''
+            wrapProgram $out/bin/super-whisper-linux \
+              --prefix PATH : ${pkgs.lib.makeBinPath [ pkgs.wtype pkgs.wl-clipboard pkgs.socat ]}
+          '';
+
+          meta = with pkgs.lib; {
+            description = "AI-powered voice to text for Linux";
+            homepage = "https://github.com/facundopanizza/super-whisper-linux";
+            license = licenses.mit;
+            platforms = platforms.linux;
+            mainProgram = "super-whisper-linux";
+          };
         };
       });
 }
