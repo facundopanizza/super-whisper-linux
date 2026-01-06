@@ -47,16 +47,16 @@ pub async fn set_clipboard(text: &str) -> Result<(), ClipboardError> {
 }
 
 /// Paste text to the currently focused application
-/// Types text directly using wtype (more reliable than Ctrl+V simulation)
+/// Uses Ctrl+V simulation (more reliable for Electron apps with multiple panes)
 pub async fn paste_text(text: &str) -> Result<(), ClipboardError> {
-    // Also set clipboard as backup (user can manually Ctrl+V if needed)
-    let _ = set_clipboard(text).await;
+    // Set clipboard first
+    set_clipboard(text).await?;
 
-    // Small delay to ensure focus is ready
+    // Small delay to ensure clipboard is ready
     tokio::time::sleep(Duration::from_millis(50)).await;
 
-    // Type text directly using wtype (more reliable than simulating Ctrl+V)
-    type_text(text).await
+    // Use Ctrl+V - the app handles paste at its internal cursor position
+    simulate_paste_ctrlv().await
 }
 
 /// Type text directly using wtype (most reliable method for Wayland)
