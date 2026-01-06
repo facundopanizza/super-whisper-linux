@@ -35,6 +35,11 @@
 
           # Wayland clipboard
           wl-clipboard
+
+          # Vulkan for GPU acceleration (whisper.cpp)
+          vulkan-loader
+          vulkan-headers
+          shaderc  # glslc compiler for Vulkan shaders
         ];
 
         # Native build inputs (build-time dependencies)
@@ -69,9 +74,6 @@
           OPENSSL_DIR = "${pkgs.openssl.dev}";
           OPENSSL_LIB_DIR = "${pkgs.openssl.out}/lib";
           PKG_CONFIG_PATH = "${pkgs.openssl.dev}/lib/pkgconfig:${pkgs.alsa-lib.dev}/lib/pkgconfig:${pkgs.dbus.dev}/lib/pkgconfig";
-
-          # For whisper-rs to find whisper.cpp
-          WHISPER_DONT_GENERATE_BINDINGS = "1";
 
           # Clang for whisper.cpp
           LIBCLANG_PATH = "${pkgs.llvmPackages.libclang.lib}/lib";

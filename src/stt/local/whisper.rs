@@ -29,12 +29,12 @@ impl WhisperProvider {
             )));
         }
 
+        let use_gpu = config.providers.whisper_local.use_gpu;
         let path = model_path.clone();
         let ctx = tokio::task::spawn_blocking(move || {
-            WhisperContext::new_with_params(
-                path.to_str().unwrap(),
-                WhisperContextParameters::default(),
-            )
+            let mut params = WhisperContextParameters::default();
+            params.use_gpu(use_gpu);
+            WhisperContext::new_with_params(path.to_str().unwrap(), params)
         })
         .await
         .map_err(|e| SttError::ModelError(format!("Failed to load model: {}", e)))?
