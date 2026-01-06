@@ -1,3 +1,3 @@
 mod sni;
 
-pub use sni::{TrayIcon, TrayState};
+pub use sni::{TrayHandle, TrayIcon, TrayState};

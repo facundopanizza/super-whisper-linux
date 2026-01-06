@@ -5,6 +5,7 @@ use tracing_subscriber::EnvFilter;
 use super_whisper_linux::audio::AudioCapture;
 use super_whisper_linux::config::{self, AppConfig};
 use super_whisper_linux::ipc::{IpcClient, IpcServer};
+use super_whisper_linux::tray::TrayIcon;
 use super_whisper_linux::{App, AppError};
 
 #[derive(Parser)]
@@ -110,8 +111,25 @@ async fn run_app(config: AppConfig) -> anyhow::Result<()> {
     }
 
     // Start IPC server
-    let ipc_server = IpcServer::new(config.socket_path());
+    let socket_path = config.socket_path();
+    let ipc_server = IpcServer::new(socket_path.clone());
     let mut cmd_rx = ipc_server.start().await?;
+
+    // Initialize system tray (keep _tray alive to maintain the tray service)
+    let _tray = TrayIcon::new(socket_path.to_string_lossy().to_string())?;
+    let tray_handle = _tray.handle();
+
+    // Spawn task to sync app state with tray
+    let mut state_rx = app.state_receiver();
+    tokio::spawn(async move {
+        loop {
+            if state_rx.changed().await.is_err() {
+                break;
+            }
+            let state = *state_rx.borrow();
+            tray_handle.set_state(state.to_tray_state());
+        }
+    });
 
     info!("Ready! Send commands via: echo 'toggle' | nc -U {:?}", config.socket_path());
 

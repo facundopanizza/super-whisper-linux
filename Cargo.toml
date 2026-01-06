@@ -55,6 +55,9 @@ futures = "0.3"
 # Base64 encoding for API requests
 base64 = "0.22"
 
+# System tray (StatusNotifierItem for Linux/Wayland)
+ksni = "0.2"
+
 [features]
 default = ["local-whisper", "cloud-openai", "cloud-groq", "cloud-deepgram"]
 local-whisper = []
