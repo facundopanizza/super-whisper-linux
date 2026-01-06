@@ -80,6 +80,10 @@
           # Clang for whisper.cpp
           LIBCLANG_PATH = "${pkgs.llvmPackages.libclang.lib}/lib";
 
+          # Vulkan SDK for CMake to find headers and glslc
+          VULKAN_SDK = "${pkgs.vulkan-headers}";
+          VK_INCLUDE_DIR = "${pkgs.vulkan-headers}/include";
+
           shellHook = ''
             echo "SuperWhisper Linux development environment"
             echo "Rust: $(rustc --version)"
@@ -107,6 +111,10 @@
           OPENSSL_DIR = "${pkgs.openssl.dev}";
           OPENSSL_LIB_DIR = "${pkgs.openssl.out}/lib";
           LIBCLANG_PATH = "${pkgs.llvmPackages.libclang.lib}/lib";
+
+          # Vulkan SDK for CMake to find headers and glslc
+          VULKAN_SDK = "${pkgs.vulkan-headers}";
+          VK_INCLUDE_DIR = "${pkgs.vulkan-headers}/include";
 
           # Wrap the binary to include runtime dependencies in PATH
           postInstall = ''
