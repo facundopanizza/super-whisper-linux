@@ -36,10 +36,8 @@
           # Wayland clipboard
           wl-clipboard
 
-          # Vulkan for GPU acceleration (whisper.cpp)
+          # Vulkan runtime for GPU acceleration (whisper.cpp)
           vulkan-loader
-          vulkan-headers
-          shaderc  # glslc compiler for Vulkan shaders
         ];
 
         # Native build inputs (build-time dependencies)
@@ -50,6 +48,10 @@
 
           # For whisper.cpp compilation
           clang
+
+          # Vulkan build dependencies
+          vulkan-headers
+          shaderc  # glslc compiler for Vulkan shaders
         ];
 
       in {
