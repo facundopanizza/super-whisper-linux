@@ -78,11 +78,11 @@ async fn type_text(text: &str) -> Result<(), ClipboardError> {
     }
 
     // Use wtype to type the text directly
-    // -d 0: no delay between keystrokes (fast typing)
     let output = tokio::time::timeout(
         Duration::from_secs(10), // Longer timeout for long texts
         Command::new("wtype")
-            .args(["-d", "0", "--", text])
+            .arg("--")
+            .arg(text)
             .output(),
     )
     .await;
