@@ -1,0 +1,101 @@
+# SuperWhisper Linux Configuration
+# Copy this file to ~/.config/super-whisper-linux/config.toml
+
+[general]
+# Default STT provider: "whisper-local", "openai", "groq", "deepgram"
+default_provider = "whisper-local"
+
+# Language hint (ISO 639-1 code, or "auto" for auto-detection)
+language = "auto"
+
+# Enable audio feedback sounds
+audio_feedback = true
+
+# Auto-paste after transcription (requires wtype)
+auto_paste = true
+
+[audio]
+# Input device (empty = default)
+# input_device = "alsa_input.pci-0000_00_1f.3.analog-stereo"
+
+# Sample rate (whisper requires 16000)
+sample_rate = 16000
+
+# Silence detection threshold (0.0 - 1.0)
+silence_threshold = 0.01
+
+# Auto-stop after silence (seconds, 0 = disabled)
+silence_timeout = 2.0
+
+# Maximum recording duration (seconds)
+max_duration = 300
+
+[hotkey]
+# IPC socket path (default: $XDG_RUNTIME_DIR/super-whisper.sock)
+# socket_path = "/run/user/1000/super-whisper.sock"
+
+[tray]
+# Show in system tray
+enabled = true
+
+# Icon theme (embedded, system, or path)
+icon_theme = "embedded"
+
+[providers.whisper-local]
+enabled = true
+
+# Path to whisper.cpp model file
+# Download multilingual: curl -L https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.bin -o ~/.local/share/super-whisper-linux/models/ggml-base.bin
+# model_path = "~/.local/share/super-whisper-linux/models/ggml-base.bin"
+
+# Model variant: tiny, base, small, medium, large (without .en suffix for multilingual)
+model = "base"
+
+# Use GPU acceleration if available
+use_gpu = true
+
+# Number of threads (0 = auto)
+threads = 0
+
+[providers.openai]
+enabled = false
+
+# API key (or use OPENAI_API_KEY env var)
+# api_key = "sk-..."
+
+# Model name
+model = "whisper-1"
+
+# API endpoint
+endpoint = "https://api.openai.com/v1/audio/transcriptions"
+
+[providers.groq]
+enabled = false
+
+# API key (or use GROQ_API_KEY env var)
+# api_key = "gsk_..."
+
+# Model name
+model = "whisper-large-v3"
+
+# API endpoint
+endpoint = "https://api.groq.com/openai/v1/audio/transcriptions"
+
+[providers.deepgram]
+enabled = false
+
+# API key (or use DEEPGRAM_API_KEY env var)
+# api_key = "..."
+
+# Model name
+model = "nova-2"
+
+# Features to enable
+features = ["punctuate", "smart_format"]
+
+[logging]
+# Log level: trace, debug, info, warn, error
+level = "info"
+
+# Log to file (optional)
+# file = "~/.local/share/super-whisper-linux/logs/app.log"

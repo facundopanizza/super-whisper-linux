@@ -1,0 +1,17 @@
+[Unit]
+Description=SuperWhisper Linux - AI-powered voice to text
+Documentation=https://github.com/facundo/super-whisper-linux
+After=graphical-session.target
+PartOf=graphical-session.target
+
+[Service]
+Type=simple
+ExecStart=%h/.local/bin/super-whisper-linux
+Restart=on-failure
+RestartSec=5
+
+# Environment
+Environment=RUST_LOG=info
+
+[Install]
+WantedBy=graphical-session.target
