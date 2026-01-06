@@ -41,6 +41,7 @@
         nativeBuildInputs = with pkgs; [
           pkg-config
           cmake
+          git
 
           # For whisper.cpp compilation
           clang
