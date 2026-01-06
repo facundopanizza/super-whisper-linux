@@ -47,21 +47,21 @@ pub async fn set_clipboard(text: &str) -> Result<(), ClipboardError> {
 }
 
 /// Paste text to the currently focused application
-/// Sets clipboard and simulates Ctrl+V using wtype
+/// Types text directly using wtype (more reliable than Ctrl+V simulation)
 pub async fn paste_text(text: &str) -> Result<(), ClipboardError> {
-    // First, set the clipboard using wl-copy
-    set_clipboard(text).await?;
+    // Also set clipboard as backup (user can manually Ctrl+V if needed)
+    let _ = set_clipboard(text).await;
 
-    // Small delay to ensure clipboard is ready
-    tokio::time::sleep(Duration::from_millis(100)).await;
+    // Small delay to ensure focus is ready
+    tokio::time::sleep(Duration::from_millis(50)).await;
 
-    // Simulate Ctrl+V using wtype
-    simulate_paste().await
+    // Type text directly using wtype (more reliable than simulating Ctrl+V)
+    type_text(text).await
 }
 
-/// Simulate Ctrl+V paste using wtype (for wlroots-based compositors)
-async fn simulate_paste() -> Result<(), ClipboardError> {
-    // Check if wtype is available (with timeout)
+/// Type text directly using wtype (most reliable method for Wayland)
+async fn type_text(text: &str) -> Result<(), ClipboardError> {
+    // Check if wtype is available
     let wtype_check = tokio::time::timeout(
         Duration::from_secs(1),
         Command::new("which")
@@ -77,7 +77,38 @@ async fn simulate_paste() -> Result<(), ClipboardError> {
         _ => return Err(ClipboardError::WtypeNotFound),
     }
 
-    // Use wtype to simulate Ctrl+V with timeout
+    // Use wtype to type the text directly
+    // -d 0: no delay between keystrokes (fast typing)
+    let output = tokio::time::timeout(
+        Duration::from_secs(10), // Longer timeout for long texts
+        Command::new("wtype")
+            .args(["-d", "0", "--", text])
+            .output(),
+    )
+    .await;
+
+    match output {
+        Ok(Ok(output)) if output.status.success() => {
+            debug!("Text typed with wtype ({} chars)", text.len());
+            Ok(())
+        }
+        Ok(Ok(output)) => {
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            warn!("wtype failed: {}", stderr);
+            // Fallback to Ctrl+V simulation
+            simulate_paste_ctrlv().await
+        }
+        Ok(Err(e)) => Err(ClipboardError::PasteError(format!("Failed to run wtype: {}", e))),
+        Err(_) => {
+            warn!("wtype timed out");
+            Err(ClipboardError::PasteError("wtype timed out".into()))
+        }
+    }
+}
+
+/// Fallback: Simulate Ctrl+V paste using wtype
+async fn simulate_paste_ctrlv() -> Result<(), ClipboardError> {
+    // Use wtype to simulate Ctrl+V
     // -M ctrl: hold ctrl modifier
     // -k v: press v key
     // -m ctrl: release ctrl modifier
@@ -91,46 +122,14 @@ async fn simulate_paste() -> Result<(), ClipboardError> {
 
     match output {
         Ok(Ok(output)) if output.status.success() => {
-            debug!("Paste simulated with wtype");
+            debug!("Paste simulated with Ctrl+V");
             Ok(())
         }
         Ok(Ok(output)) => {
             let stderr = String::from_utf8_lossy(&output.stderr);
-            warn!("wtype failed: {}", stderr);
-            // Try alternative: ydotool (requires ydotoold running)
-            simulate_paste_ydotool().await
+            Err(ClipboardError::PasteError(format!("wtype Ctrl+V failed: {}", stderr)))
         }
         Ok(Err(e)) => Err(ClipboardError::PasteError(format!("Failed to run wtype: {}", e))),
-        Err(_) => {
-            warn!("wtype timed out");
-            simulate_paste_ydotool().await
-        }
-    }
-}
-
-/// Fallback: simulate paste using ydotool
-async fn simulate_paste_ydotool() -> Result<(), ClipboardError> {
-    let output = tokio::time::timeout(
-        Duration::from_secs(2),
-        Command::new("ydotool")
-            .args(["key", "29:1", "47:1", "47:0", "29:0"]) // Ctrl down, V down, V up, Ctrl up
-            .output(),
-    )
-    .await;
-
-    match output {
-        Ok(Ok(output)) if output.status.success() => {
-            debug!("Paste simulated with ydotool");
-            Ok(())
-        }
-        Ok(Ok(output)) => {
-            let stderr = String::from_utf8_lossy(&output.stderr);
-            Err(ClipboardError::PasteError(format!(
-                "Both wtype and ydotool failed. stderr: {}",
-                stderr
-            )))
-        }
-        Ok(Err(e)) => Err(ClipboardError::PasteError(format!("Failed to run ydotool: {}", e))),
-        Err(_) => Err(ClipboardError::PasteError("ydotool timed out".into())),
+        Err(_) => Err(ClipboardError::PasteError("wtype timed out".into())),
     }
 }
